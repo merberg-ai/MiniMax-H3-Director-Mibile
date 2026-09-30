@@ -7,6 +7,7 @@ import { applyH3Grid, applyRefLimits } from "./lib/h3";
 import { useDirector } from "./lib/store";
 import type { AudioModes, ConfigGroup } from "./lib/types";
 import "./styles.css";
+import "./mobile.css";
 
 startBridge();
 installFlushBoundaries();
