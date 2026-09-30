@@ -36,8 +36,13 @@ async function uploadBrowserFile(file: File): Promise<string> {
 
 function serverParent(path: string): string {
   const i = Math.max(path.lastIndexOf("/"), path.lastIndexOf("\\"));
-  if (i <= 0) throw new Error(`Could not determine the server upload directory from ${path}`);
+  if (i <= 0) throw new Error(`Could not determine the server directory from ${path}`);
   return path.slice(0, i);
+}
+
+function serverJoin(base: string, ...parts: string[]): string {
+  const sep = base.includes("\\") ? "\\" : "/";
+  return [base.replace(/[\\/]+$/, ""), ...parts.map((p) => p.replace(/^[\\/]+|[\\/]+$/g, ""))].join(sep);
 }
 
 function serverFileName(path: string): string {
@@ -57,18 +62,16 @@ function downloadServerFile(path: string, suggestedName?: string): void {
 }
 
 /**
- * Gradio already grants browser uploads a server temp directory. Uploading a
- * tiny marker gives us a safe temporary folder that the browser can also read
- * back through Gradio's file route. The existing Python save_project_zip code
- * can therefore stay unchanged.
+ * Ask the existing project-list bridge for the plugin's server-side projects
+ * folder, then derive workspace/derived beside it. The Python plugin already
+ * registers DERIVED_DIR with Gradio's static-file server, so a zip written
+ * here is downloadable by the remote browser without adding any new backend
+ * command or relying on Gradio's upload-temp permissions.
  */
 async function browserSaveDirectory(): Promise<string> {
-  const marker = new File(
-    [`H3 Director browser save target ${Date.now()}\n`],
-    `.h3director-save-${Date.now()}.tmp`,
-    { type: "application/octet-stream" },
-  );
-  return serverParent(await uploadBrowserFile(marker));
+  const r = await request<{ dir?: string }>("list_projects", {}, 30000);
+  if (!r?.dir) throw new Error("Wan2GP did not report the project directory");
+  return serverJoin(serverParent(r.dir), "workspace", "derived");
 }
 
 export function TopBar() {
