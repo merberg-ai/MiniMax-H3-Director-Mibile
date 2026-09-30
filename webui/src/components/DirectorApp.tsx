@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { hydrateDirector, useDirector, useWindowStats, windowLayout } from "../lib/store";
 import { TopBar } from "./TopBar";
 import { Timeline } from "./Timeline";
@@ -13,25 +13,14 @@ import { VideoMonitor } from "./VideoMonitor";
 import { ResultViewer } from "./ResultViewer";
 import { PromptEditor } from "./PromptEditor";
 import { Manual } from "./Manual";
-import type { PaneId } from "../lib/types";
+import { MobileNav, type MobileSurface } from "./MobileNav";
 import { buildPromptRelay } from "../lib/prompt";
 import { estimateMinutes, solveVideoLength, windowSecondsWarning } from "../lib/h3";
-
-const MOBILE_PANES: { id: PaneId | "timeline"; label: string }[] = [
-  { id: "timeline", label: "Timeline" },
-  { id: "refs", label: "Refs" },
-  { id: "gen", label: "Gen" },
-  { id: "audio", label: "Audio" },
-  { id: "project", label: "Project" },
-  { id: "sfx", label: "SFX" },
-  { id: "export", label: "Export" },
-  { id: "builder", label: "Hybrid" },
-  { id: "diag", label: "Diag" },
-];
 
 export function DirectorApp() {
   const s = useDirector();
   const stats = useWindowStats();
+  const [mobileSurface, setMobileSurface] = useState<MobileSurface>("timeline");
   // The results track is always there; the timeline is tall enough for it.
   const hasResults = true;
 
@@ -92,7 +81,7 @@ export function DirectorApp() {
   }, [s]);
 
   return (
-    <div className={`app${hasResults ? " has-results" : ""}`}>
+    <div className={`app${hasResults ? " has-results" : ""} mobile-surface-${mobileSurface}`}>
       <TopBar />
 
       <Timeline />
@@ -100,6 +89,7 @@ export function DirectorApp() {
       <Stage />
       <Inspector />
       <ActionBar />
+      <MobileNav surface={mobileSurface} onSurface={setMobileSurface} />
       {s.toast && <div className="toast">{s.toast}</div>}
       {s.scheduleOpen && schedule && (
         <div className="modal" onClick={() => s.setScheduleOpen(false)} role="presentation">
