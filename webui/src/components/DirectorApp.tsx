@@ -13,19 +13,28 @@ import { VideoMonitor } from "./VideoMonitor";
 import { ResultViewer } from "./ResultViewer";
 import { PromptEditor } from "./PromptEditor";
 import { Manual } from "./Manual";
-import { MobileNav, type MobileSurface } from "./MobileNav";
+import { MobileDirector } from "./MobileDirector";
 import { buildPromptRelay } from "../lib/prompt";
 import { estimateMinutes, solveVideoLength, windowSecondsWarning } from "../lib/h3";
 
 export function DirectorApp() {
   const s = useDirector();
   const stats = useWindowStats();
-  const [mobileSurface, setMobileSurface] = useState<MobileSurface>("timeline");
-  // The results track is always there; the timeline is tall enough for it.
+  const [isMobile, setIsMobile] = useState(() =>
+    typeof window !== "undefined" ? window.matchMedia("(max-width: 760px)").matches : false,
+  );
   const hasResults = true;
 
   useEffect(() => {
     hydrateDirector();
+  }, []);
+
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 760px)");
+    const apply = () => setIsMobile(mq.matches);
+    apply();
+    mq.addEventListener?.("change", apply);
+    return () => mq.removeEventListener?.("change", apply);
   }, []);
 
   useEffect(() => {
@@ -67,11 +76,11 @@ export function DirectorApp() {
   const schedule = useMemo(() => {
     if (!s.scheduleOpen) return null;
     const maxF = Math.max(1, Math.round(s.duration_sec * s.fps));
-    // The windows in force -- hand-set in manual mode -- so the preview shows
-    // what Generate will actually send.
     const lay = windowLayout(s);
     const wins = lay.spans;
-    const n = lay.manual ? lay.frames.length : solveVideoLength(maxF, s.timeline.slidingWindowSize, s.timeline.slidingWindowOverlap).windows;
+    const n = lay.manual
+      ? lay.frames.length
+      : solveVideoLength(maxF, s.timeline.slidingWindowSize, s.timeline.slidingWindowOverlap).windows;
     const relay = buildPromptRelay(s, wins);
     return {
       windows: relay.windows,
@@ -81,15 +90,20 @@ export function DirectorApp() {
   }, [s]);
 
   return (
-    <div className={`app${hasResults ? " has-results" : ""} mobile-surface-${mobileSurface}`}>
-      <TopBar />
+    <>
+      {isMobile ? (
+        <MobileDirector />
+      ) : (
+        <div className={`app${hasResults ? " has-results" : ""}`}>
+          <TopBar />
+          <Timeline />
+          <Rail />
+          <Stage />
+          <Inspector />
+          <ActionBar />
+        </div>
+      )}
 
-      <Timeline />
-      <Rail />
-      <Stage />
-      <Inspector />
-      <ActionBar />
-      <MobileNav surface={mobileSurface} onSurface={setMobileSurface} />
       {s.toast && <div className="toast">{s.toast}</div>}
       {s.scheduleOpen && schedule && (
         <div className="modal" onClick={() => s.setScheduleOpen(false)} role="presentation">
@@ -121,17 +135,13 @@ export function DirectorApp() {
               </div>
               {schedule.windows.map((w) => (
                 <div key={w.i} className="card">
-                  <h4>
-                    Window {w.i + 1} · frames {w.start}–{w.end}
-                  </h4>
+                  <h4>Window {w.i + 1} · frames {w.start}–{w.end}</h4>
                   <pre>{w.prompt}</pre>
                 </div>
               ))}
               <div className="row">
                 <label />
-                <button className="btn go" type="button" onClick={() => s.setScheduleOpen(false)}>
-                  Close
-                </button>
+                <button className="btn go" type="button" onClick={() => s.setScheduleOpen(false)}>Close</button>
               </div>
             </div>
           </div>
@@ -142,6 +152,6 @@ export function DirectorApp() {
       <ResultViewer />
       <PromptEditor />
       <Manual />
-    </div>
+    </>
   );
 }
