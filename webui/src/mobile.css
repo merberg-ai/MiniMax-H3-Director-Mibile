@@ -38,7 +38,9 @@
   .top .mark{font-size:12px;white-space:nowrap}
   .top .chipf:not(.num){max-width:148px;min-width:80px;overflow:hidden}
   .top .chipf:not(.num) b{max-width:92px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-  .top .chipf:not(.num)>span:last-child{display:none}
+  /* Hide the ordinary saved/unsaved prose, but NEVER the load-blocked warning. */
+  .top .chipf:not(.num)>span[style]{display:none}
+  .top .chipf:not(.num) .pill.w{display:inline-flex;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .top .chipf.num,.top .build-badge{display:none!important}
   .top button[title^="Save directly to a folder"],
   .top button[title^="Reload the last autosaved"]{display:none!important}
