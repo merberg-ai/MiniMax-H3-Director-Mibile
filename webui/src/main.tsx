@@ -8,6 +8,7 @@ import { useDirector } from "./lib/store";
 import type { AudioModes, ConfigGroup } from "./lib/types";
 import "./styles.css";
 import "./mobile.css";
+import "./mobile-project.css";
 
 startBridge();
 installFlushBoundaries();
@@ -64,9 +65,9 @@ async function loadModels(attempt = 0): Promise<void> {
     useDirector.getState().setToast("Wan2GP reported no MiniMax H3 models — press Rescan in Generation.");
   }
 }
-on("bridge_ready", () => void loadModels());   // retry once the bridge is confirmed
+on("bridge_ready", () => void loadModels());
 void loadModels();
-void useDirector.getState().reattachJob();   // a run may still be going from before a refresh
+void useDirector.getState().reattachJob();
 
 const el = document.getElementById("root");
 if (el) createRoot(el).render(<React.StrictMode><DirectorApp /></React.StrictMode>);
