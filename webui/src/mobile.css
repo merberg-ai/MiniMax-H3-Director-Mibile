@@ -1,0 +1,274 @@
+/* Mobile Director layout.
+   Desktop remains governed entirely by styles.css. This layer only takes over
+   below 760px so the phone UI can evolve without destabilising the workstation
+   layout. */
+.mobile-nav,.mobile-more-back{display:none}
+
+@media (max-width:760px){
+  html,body,#root{width:100%;height:100%;min-height:100%;overflow:hidden;overscroll-behavior:none}
+  body{font-size:14px}
+  #root{min-width:0}
+
+  .app{
+    display:flex!important;
+    flex-direction:column;
+    width:100%;
+    height:100dvh;
+    min-height:0;
+    overflow:hidden;
+    grid-template:none!important;
+  }
+
+  /* Compact device header: local/browser Save + Load stay visible. Host-only
+     file operations are intentionally hidden on a phone. */
+  .top{
+    display:flex;
+    flex:0 0 auto;
+    min-height:48px;
+    height:auto;
+    gap:6px;
+    padding:5px 7px;
+    overflow-x:auto;
+    overflow-y:hidden;
+    scrollbar-width:none;
+    -webkit-overflow-scrolling:touch;
+  }
+  .top::-webkit-scrollbar{display:none}
+  .top>*{flex-shrink:0}
+  .top .mark{font-size:12px;white-space:nowrap}
+  .top .chipf:not(.num){max-width:148px;min-width:80px;overflow:hidden}
+  .top .chipf:not(.num) b{max-width:92px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .top .chipf:not(.num)>span:last-child{display:none}
+  .top .chipf.num,.top .build-badge{display:none!important}
+  .top button[title^="Save directly to a folder"],
+  .top button[title^="Reload the last autosaved"]{display:none!important}
+  .top .btn.sm{min-height:38px;padding:7px 10px;font-size:12px}
+
+  /* One main surface at a time. Rail is replaced by the bottom navigation. */
+  .rail{display:none!important}
+  .time,.stage,.insp{display:none!important;min-width:0}
+  .app.mobile-surface-timeline .time{display:flex!important;flex:1 1 auto;min-height:0}
+  .app.mobile-surface-stage .stage{display:block!important;flex:1 1 auto;min-height:0}
+  .app.mobile-surface-inspector .insp{display:flex!important;flex:1 1 auto;min-height:0}
+
+  /* Timeline gets the whole working area. Toolbars swipe horizontally rather
+     than wrapping into several tiny rows. Pointer handles are finger-sized. */
+  .time{border-bottom:0}
+  .time .tb{
+    flex:0 0 auto;
+    flex-wrap:nowrap;
+    overflow-x:auto;
+    overflow-y:hidden;
+    gap:7px;
+    padding:6px 8px;
+    scrollbar-width:none;
+    -webkit-overflow-scrolling:touch;
+  }
+  .time .tb::-webkit-scrollbar{display:none}
+  .time .tb>*{flex:0 0 auto}
+  .time .tb .tc{margin-left:0}
+  .time .nin{width:68px;min-height:34px;font-size:14px}
+  .cvwrap{flex:1 1 auto;min-height:0;touch-action:pan-y}
+  .trk{min-height:38px}
+  .seg-c{font-size:11px;touch-action:none}
+  .seg-c .handle{width:16px!important;touch-action:none}
+  .seg-c .handle.l{left:0}
+  .seg-c .handle.r{right:0}
+  .whandle{width:21px!important;margin-left:-10px!important;touch-action:none}
+  .whandle.tall{width:21px!important;margin-left:-10px!important}
+  .wlab{font-size:11px;padding:2px 5px}
+  .zoom{height:22px}
+  .zwin{top:3px;bottom:3px}
+  .ph::after{left:-6px;border-width:6px}
+
+  /* Workflow panes: one comfortable column, no desktop-width labels. */
+  .stage{
+    overflow-y:auto;
+    overflow-x:hidden;
+    padding:10px;
+    -webkit-overflow-scrolling:touch;
+  }
+  .stage .pane.on{display:block}
+  .bar{position:sticky;top:0;z-index:3;margin:-10px -10px 10px;padding:10px;background:var(--bg);border-bottom:1px solid var(--ln)}
+  .bar h2{font-size:17px}
+  .two{grid-template-columns:1fr!important;gap:0!important}
+  .row{align-items:flex-start;flex-wrap:wrap;gap:5px 8px;margin-bottom:12px}
+  .row>label,.stage .row>label,.insp .row>label,.fs .row label{width:100%!important;flex:0 0 100%!important;font-size:12px}
+  .row .v{margin-left:0;max-width:100%;overflow-wrap:anywhere}
+  .hint{margin:2px 0 10px!important;font-size:11px}
+  .card{padding:11px;margin-bottom:10px}
+  .card h4{font-size:12px}
+  select,input[type=text],input[type=number],textarea{
+    width:100%;
+    min-height:42px;
+    font-size:16px;
+    padding:8px 9px;
+  }
+  textarea{min-height:90px}
+  input[type=range]{height:5px;min-height:28px}
+  input[type=range]::-webkit-slider-thumb{width:20px;height:20px}
+  .chk{min-height:38px;align-items:center;font-size:13px}
+  .chk input{width:18px;height:18px}
+  .btn{min-height:40px;padding:8px 11px;font-size:13px}
+  .btn.sm{min-height:36px;padding:7px 9px;font-size:12px}
+  .seg button{min-height:38px;padding:7px 10px}
+  .tabs{overflow-x:auto;flex-wrap:nowrap;scrollbar-width:none}
+  .tabs::-webkit-scrollbar{display:none}
+  .tabs button{flex:0 0 auto;min-height:40px}
+  .refs{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+  .ref .th{height:88px}
+  .slot{height:108px;font-size:12px}
+  .chips{gap:7px}
+  .chip{min-height:34px;padding:6px 9px;font-size:12px}
+
+  /* Selection editor becomes its own screen. */
+  .insp{border-left:0;border-top:0;background:var(--bg)}
+  .ih{flex:0 0 auto;padding:10px 12px;background:var(--pan)}
+  .ih h3{font-size:16px}
+  .ib{flex:1 1 auto;min-height:0;overflow-y:auto;padding:5px 12px 18px;-webkit-overflow-scrolling:touch}
+  .fs{padding:12px 0}
+  .mprev{max-width:100%}
+
+  /* Core render actions remain one swipeable strip above the navigation. */
+  .act{
+    display:flex;
+    flex:0 0 auto;
+    min-height:50px;
+    height:auto;
+    gap:6px;
+    padding:5px 7px;
+    overflow-x:auto;
+    overflow-y:hidden;
+    border-top:1px solid var(--ln);
+    scrollbar-width:none;
+    -webkit-overflow-scrolling:touch;
+  }
+  .act::-webkit-scrollbar{display:none}
+  .act>*{flex:0 0 auto}
+  .act .btn{min-height:40px}
+  .act .stat{display:none!important}
+  .splitstat{max-width:85vw;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+  /* Five-thumb bottom bar. */
+  .mobile-nav{
+    display:grid;
+    grid-template-columns:repeat(5,1fr);
+    flex:0 0 auto;
+    min-height:58px;
+    padding:3px 3px max(3px,env(safe-area-inset-bottom));
+    border-top:1px solid var(--ln2);
+    background:var(--pan);
+    z-index:110;
+  }
+  .mobile-nav button{
+    border:0;
+    background:transparent;
+    color:var(--ink3);
+    min-width:0;
+    min-height:52px;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    gap:2px;
+    border-radius:7px;
+    font:inherit;
+    font-size:10px;
+    cursor:pointer;
+    touch-action:manipulation;
+  }
+  .mobile-nav button svg{flex:none}
+  .mobile-nav button.on{color:var(--sig);background:var(--sigbg)}
+
+  /* Secondary tools live in a thumb-friendly bottom sheet. */
+  .mobile-more-back{
+    position:fixed;
+    inset:0;
+    z-index:100;
+    display:flex;
+    align-items:flex-end;
+    padding:12px 10px calc(68px + env(safe-area-inset-bottom));
+    background:rgba(6,10,14,.58);
+  }
+  .mobile-more-sheet{
+    width:100%;
+    max-height:70dvh;
+    overflow:auto;
+    padding:10px;
+    border:1px solid var(--ln2);
+    border-radius:14px;
+    background:var(--pan);
+    box-shadow:0 18px 50px rgba(0,0,0,.55);
+  }
+  .mobile-more-head{display:flex;align-items:center;justify-content:space-between;padding:2px 3px 9px}
+  .mobile-more-head strong{font-size:15px}
+  .mobile-icon-btn{width:38px;height:38px;display:grid;place-items:center;border:0;border-radius:19px;background:var(--rai);color:var(--ink)}
+  .mobile-more-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+  .mobile-more-item{
+    min-height:68px;
+    display:flex;
+    align-items:center;
+    gap:10px;
+    padding:10px 12px;
+    text-align:left;
+    border:1px solid var(--ln2);
+    border-radius:9px;
+    background:var(--rai);
+    color:var(--ink2);
+    font:inherit;
+  }
+  .mobile-more-item.on{border-color:var(--sig);color:var(--sig);background:var(--sigbg)}
+
+  /* Popouts become sheets instead of draggable desktop windows. */
+  .modal,.pe-back,.man-back{padding:0!important;align-items:flex-end!important}
+  .modal .sheet,.pe-win,.man-win{
+    width:100vw!important;
+    max-width:none!important;
+    min-width:0!important;
+    height:auto;
+    max-height:92dvh!important;
+    resize:none!important;
+    border-radius:14px 14px 0 0!important;
+  }
+  .modal .sheet .body,.man-text{overflow-y:auto;-webkit-overflow-scrolling:touch}
+  .pe-win{padding:10px}
+  .pe-win textarea{min-height:48dvh;font-size:16px}
+  .man-win{height:88dvh!important}
+  .man-body{flex-direction:column}
+  .man-nav{width:auto;flex:0 0 auto;flex-direction:row;overflow-x:auto;border-right:0;border-bottom:1px solid var(--ln)}
+  .man-link{flex:0 0 auto;min-height:40px}
+  .man-text{padding:14px}
+
+  .monitor,.pv{
+    left:2vw!important;
+    right:auto!important;
+    top:auto!important;
+    bottom:calc(118px + env(safe-area-inset-bottom))!important;
+    width:96vw!important;
+    max-width:96vw!important;
+    max-height:62dvh!important;
+    resize:none!important;
+  }
+
+  .toast{
+    bottom:calc(122px + env(safe-area-inset-bottom));
+    width:max-content;
+    max-width:90vw;
+    font-size:12px;
+  }
+}
+
+@media (max-width:430px){
+  /* On narrow phones the project chip is more useful than repeating the app
+     name; removing the mark leaves Save and Load comfortably tappable. */
+  .top .mark{display:none}
+  .top .chipf:not(.num){max-width:132px;flex:1 1 auto}
+  .refs{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+
+@media (max-width:350px){
+  .top .chipf:not(.num){display:none}
+  .mobile-nav button{font-size:9px}
+  .mobile-more-grid{grid-template-columns:1fr}
+  .refs{grid-template-columns:1fr}
+}
