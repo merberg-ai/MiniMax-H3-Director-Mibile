@@ -2,9 +2,74 @@ import { useRef } from "react";
 import { useDirector } from "../lib/store";
 import { request } from "../lib/bridge";
 import { flushNow } from "../lib/persist";
-import { downloadJson, readSessionFile } from "../lib/session";
+import { readSessionFile } from "../lib/session";
 
 const H3D2_BUILD = "1.6.21";
+
+function browserBase(): string {
+  const origin = (window.location && window.location.origin) || "";
+  return origin && origin !== "null" ? origin : "";
+}
+
+/** Upload a browser-selected file through Gradio and return its server-side temp path. */
+async function uploadBrowserFile(file: File): Promise<string> {
+  let lastError = "Gradio upload endpoint did not respond";
+  for (const ep of ["/gradio_api/upload", "/upload"]) {
+    try {
+      const fd = new FormData();
+      fd.append("files", file, file.name);
+      const res = await fetch(browserBase() + ep, { method: "POST", body: fd });
+      if (!res.ok) {
+        lastError = `${ep} returned HTTP ${res.status}`;
+        continue;
+      }
+      const paths = await res.json();
+      const serverPath = Array.isArray(paths) ? paths[0] : paths;
+      if (typeof serverPath === "string" && serverPath) return serverPath;
+      lastError = `${ep} returned no file path`;
+    } catch (e) {
+      lastError = String(e);
+    }
+  }
+  throw new Error(lastError);
+}
+
+function serverParent(path: string): string {
+  const i = Math.max(path.lastIndexOf("/"), path.lastIndexOf("\\"));
+  if (i <= 0) throw new Error(`Could not determine the server upload directory from ${path}`);
+  return path.slice(0, i);
+}
+
+function serverFileName(path: string): string {
+  const normalized = path.replace(/\\/g, "/");
+  return normalized.slice(normalized.lastIndexOf("/") + 1) || "h3-director-project.zip";
+}
+
+/** Start a download on the browser/device that is actually viewing Wan2GP. */
+function downloadServerFile(path: string, suggestedName?: string): void {
+  const a = document.createElement("a");
+  a.href = `${browserBase()}/gradio_api/file=${encodeURIComponent(path)}`;
+  a.download = suggestedName || serverFileName(path);
+  a.style.display = "none";
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+}
+
+/**
+ * Gradio already grants browser uploads a server temp directory. Uploading a
+ * tiny marker gives us a safe temporary folder that the browser can also read
+ * back through Gradio's file route. The existing Python save_project_zip code
+ * can therefore stay unchanged.
+ */
+async function browserSaveDirectory(): Promise<string> {
+  const marker = new File(
+    [`H3 Director browser save target ${Date.now()}\n`],
+    `.h3director-save-${Date.now()}.tmp`,
+    { type: "application/octet-stream" },
+  );
+  return serverParent(await uploadBrowserFile(marker));
+}
 
 export function TopBar() {
   const fileRef = useRef<HTMLInputElement>(null);
@@ -31,22 +96,21 @@ export function TopBar() {
       <button
         className="btn sm"
         type="button"
-        title="Save the full project zip (settings, timeline and every media file)"
+        title="Download the full project zip to this browser/device"
         onClick={async () => {
           try {
-            let dir = s.saveDir || "";
-            if (!dir) {
-              // Nowhere chosen yet - ask, rather than picking for them.
-              const pick = await request<{ dir?: string; cancelled?: boolean }>("browse_dir", {}, 180000);
-              if (!pick?.dir) { s.setToast("Save cancelled"); return; }
-              dir = pick.dir;
-              s.patch({ saveDir: dir });
-            }
+            s.setToast("Preparing project download…");
             await flushNow();
+            const dir = await browserSaveDirectory();
             const r = await request<{ ok: boolean; path?: string; incomplete?: string[] }>(
               "save_project_zip", { name: s.project_name, dir }, 3600000);
-            if (r?.incomplete?.length) s.setToast(`SAVE INCOMPLETE - missing: ${r.incomplete.join(", ")}`);
-            else s.setToast(`Saved to ${r?.path || dir}`);
+            if (!r?.path) throw new Error("Wan2GP did not return the saved project path");
+            if (r.incomplete?.length) {
+              s.setToast(`SAVE INCOMPLETE - missing: ${r.incomplete.join(", ")}`);
+              return;
+            }
+            downloadServerFile(r.path, serverFileName(r.path));
+            s.setToast(`Download started: ${serverFileName(r.path)}`);
           } catch (e) {
             s.setToast(`Save failed: ${String(e)}`);
           }
@@ -54,7 +118,8 @@ export function TopBar() {
       >
         Save
       </button>
-      <button className="btn sm" type="button" title="Choose a different folder and save there"
+      <button className="btn sm" type="button"
+        title="Save directly to a folder on the machine running Wan2GP"
         onClick={async () => {
           try {
             const pick = await request<{ dir?: string }>("browse_dir", {}, 180000);
@@ -63,33 +128,13 @@ export function TopBar() {
             await flushNow();
             const r = await request<{ path?: string }>("save_project_zip",
               { name: s.project_name, dir: pick.dir }, 3600000);
-            s.setToast(`Saved to ${r?.path || pick.dir}`);
-          } catch (e) { s.setToast(`Save failed: ${String(e)}`); }
+            s.setToast(`Saved on host to ${r?.path || pick.dir}`);
+          } catch (e) { s.setToast(`Host save failed: ${String(e)}`); }
         }}>
-        Save as…
+        Host save…
       </button>
-      <button className="btn sm" type="button" title="Open a project zip, or a settings .json"
-        onClick={async () => {
-          // A zip carries the media too, so prefer the native picker for it
-          // and fall back to the browser input for a bare .json.
-          try {
-            const pick = await request<{ path?: string; cancelled?: boolean }>("browse_zip", {}, 180000);
-            if (pick?.path) {
-              const r = await request<{ payload?: unknown; restored?: number; name?: string;
-                media?: Record<string, never>; missing?: string[]; fileBase?: string }>(
-                "open_project_zip", { path: pick.path }, 3600000);
-              if (r?.payload) {
-                const { hydrateMedia } = await import("../lib/media");
-                hydrateMedia(r.media, r.fileBase, r.missing);
-                s.loadSession(r.payload as never);
-                s.setToast(`Opened ${r.name} - ${r.restored} media file(s) restored`);
-              }
-              return;
-            }
-            if (pick?.cancelled) return;
-          } catch { /* no picker - fall through to the browser input */ }
-          fileRef.current?.click();
-        }}>
+      <button className="btn sm" type="button" title="Open a project zip or settings JSON from this browser/device"
+        onClick={() => fileRef.current?.click()}>
         Load
       </button>
       <input
@@ -102,7 +147,22 @@ export function TopBar() {
           e.target.value = "";
           if (!f) return;
           try {
+            const lower = f.name.toLowerCase();
+            if (lower.endsWith(".zip") || f.type.toLowerCase().includes("zip")) {
+              s.setToast(`Uploading ${f.name}…`);
+              const path = await uploadBrowserFile(f);
+              const r = await request<{ payload?: unknown; restored?: number; name?: string;
+                media?: Record<string, never>; missing?: string[]; fileBase?: string }>(
+                "open_project_zip", { path }, 3600000);
+              if (!r?.payload) throw new Error("Project archive did not contain a loadable project");
+              const { hydrateMedia } = await import("../lib/media");
+              hydrateMedia(r.media, r.fileBase, r.missing);
+              s.loadSession(r.payload as never);
+              s.setToast(`Opened ${r.name || f.name} - ${r.restored || 0} media file(s) restored`);
+              return;
+            }
             s.loadSession(await readSessionFile(f));
+            s.setToast(`Opened ${f.name}`);
           } catch (err) {
             s.setToast(err instanceof Error ? err.message : "Could not load");
           }
